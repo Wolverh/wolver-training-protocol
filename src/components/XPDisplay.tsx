@@ -18,14 +18,14 @@ export default function XPDisplay({ totalXP, todayXP, animateXP }: XPDisplayProp
     if (animateXP) {
       const timer = setTimeout(() => setDisplayXP(totalXP), 50)
       return () => clearTimeout(timer)
+    } else {
+      setDisplayXP(totalXP)
     }
-    setDisplayXP(totalXP)
   }, [totalXP, animateXP])
 
   return (
     <div className="w-full border border-border rounded-md bg-surface/50 overflow-hidden">
       <div className="p-6 md:p-8">
-        {/* Top row: Total XP and Level */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-md border border-border bg-bg flex items-center justify-center">
@@ -57,7 +57,6 @@ export default function XPDisplay({ totalXP, todayXP, animateXP }: XPDisplayProp
           </div>
         </div>
 
-        {/* Progress bar */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-text-tertiary font-mono">LEVEL {level.level}</span>

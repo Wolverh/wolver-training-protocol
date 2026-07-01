@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { supabase, WorkoutDay, Exercise, ExerciseCompletion, UserProfile } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import type { WorkoutDay, Exercise, ExerciseCompletion, UserProfile } from '@/lib/supabase'
 import { calculateDayBonus } from '@/lib/xp'
 import { getActiveMuscles } from '@/lib/muscles'
 import Gatekeeper from '@/components/Gatekeeper'
@@ -20,11 +21,10 @@ export default function Home() {
   const [animateXP, setAnimateXP] = useState(false)
   const [completedDays, setCompletedDays] = useState<Set<string>>(new Set())
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = useMemo(() => new Date().toISOString().split('T')[0], [])
 
   const loadData = useCallback(async () => {
     try {
-      // Load user
       const { data: userData } = await supabase
         .from('users')
         .select('*')
@@ -33,7 +33,6 @@ export default function Home() {
 
       if (userData) setUser(userData)
 
-      // Load workout days
       const { data: daysData } = await supabase
         .from('workout_days')
         .select('*')
@@ -41,7 +40,6 @@ export default function Home() {
 
       if (daysData) setWorkoutDays(daysData)
 
-      // Load all exercises grouped by day
       const { data: exercisesData } = await supabase
         .from('exercises')
         .select('*')
@@ -49,14 +47,13 @@ export default function Home() {
 
       if (exercisesData) {
         const grouped: Record<string, Exercise[]> = {}
-        exercisesData.forEach(ex => {
+        exercisesData.forEach((ex: Exercise) => {
           if (!grouped[ex.workout_day_id]) grouped[ex.workout_day_id] = []
           grouped[ex.workout_day_id].push(ex)
         })
         setExercises(grouped)
       }
 
-      // Load today's completions
       if (userData) {
         const { data: completionsData } = await supabase
           .from('exercise_completions')
@@ -71,7 +68,6 @@ export default function Home() {
           setTodayXP(xp)
         }
 
-        // Load today's day completions
         const { data: dayCompletionsData } = await supabase
           .from('day_completions')
           .select('*')
@@ -109,7 +105,6 @@ export default function Home() {
     const newCompleted = new Set(completedExercises)
 
     if (completed) {
-      // Add completion
       newCompleted.add(exerciseId)
       setCompletedExercises(newCompleted)
 
@@ -120,7 +115,6 @@ export default function Home() {
         xp_earned: exercise.xp_value,
       })
 
-      // Update user XP
       const newTotalXP = (user.total_xp || 0) + exercise.xp_value
       await supabase.from('users').update({ total_xp: newTotalXP, updated_at: new Date().toISOString() }).eq('id', user.id)
       setUser({ ...user, total_xp: newTotalXP })
@@ -128,7 +122,6 @@ export default function Home() {
       setAnimateXP(true)
       setTimeout(() => setAnimateXP(false), 500)
 
-      // Check if day is complete
       const dayExercises = exercises[exercise.workout_day_id] || []
       const allComplete = dayExercises.every(e => newCompleted.has(e.id))
 
@@ -149,7 +142,6 @@ export default function Home() {
         setCompletedDays(prev => new Set([...prev, exercise.workout_day_id]))
       }
     } else {
-      // Remove completion
       newCompleted.delete(exerciseId)
       setCompletedExercises(newCompleted)
 
@@ -160,13 +152,11 @@ export default function Home() {
         .eq('exercise_id', exerciseId)
         .eq('completed_date', today)
 
-      // Update user XP
       const newTotalXP = Math.max(0, (user.total_xp || 0) - exercise.xp_value)
       await supabase.from('users').update({ total_xp: newTotalXP, updated_at: new Date().toISOString() }).eq('id', user.id)
       setUser({ ...user, total_xp: newTotalXP })
       setTodayXP(prev => Math.max(0, prev - exercise.xp_value))
 
-      // Check if day was previously complete and remove bonus
       if (completedDays.has(exercise.workout_day_id)) {
         const dayExercises = exercises[exercise.workout_day_id] || []
         const bonus = calculateDayBonus(dayExercises.length)
@@ -191,7 +181,6 @@ export default function Home() {
     }
   }
 
-  // Calculate active muscles from completed exercises
   const activeMuscles = useMemo(() => {
     const completedMuscleGroups = Object.values(exercises)
       .flat()
@@ -218,7 +207,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-bg">
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8 flex flex-col gap-8">
-        {/* Header */}
         <header className="text-center py-10 md:py-16 border-b border-border">
           <span className="text-xs text-text-tertiary uppercase tracking-[0.2em] block mb-4">
             Hypertrophy Engine
@@ -228,16 +216,13 @@ export default function Home() {
           </h1>
         </header>
 
-        {/* XP Display */}
         <XPDisplay
           totalXP={user?.total_xp || 0}
           todayXP={todayXP}
           animateXP={animateXP}
         />
 
-        {/* Main Content: Workout Cards + Hypertrophy Map */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Workout Cards */}
           <div className="lg:col-span-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {workoutDays.map(day => (
@@ -252,7 +237,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hypertrophy Map */}
           <div className="lg:col-span-1">
             <div className="lg:sticky lg:top-8">
               <HypertrophyMap activeMuscles={activeMuscles} />
@@ -260,7 +244,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Footer */}
         <footer className="text-center py-8 border-t border-border">
           <p className="text-xs text-text-tertiary uppercase tracking-widest">
             Wolver Training Protocol v1.0

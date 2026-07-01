@@ -1,30 +1,33 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface GatekeeperProps {
   onAuthenticated: () => void
 }
+
+const QUESTION = 'You are trapped in an unbreakable, infinite time loop, armed only with a shattered glass shard. The only exit requires an infinitely shifting quantum code. What do you do?'
 
 export default function Gatekeeper({ onAuthenticated }: GatekeeperProps) {
   const [phase, setPhase] = useState<'typing' | 'options' | 'rejected' | 'accepted'>('typing')
   const [displayedText, setDisplayedText] = useState('')
   const [showOptions, setShowOptions] = useState(false)
 
-  const fullQuestion = 'You are trapped in an unbreakable, infinite time loop, armed only with a shattered glass shard. The only exit requires an infinitely shifting quantum code. What do you do?'
+  const handleAuth = useCallback(() => {
+    onAuthenticated()
+  }, [onAuthenticated])
 
   useEffect(() => {
-    // Check if already authenticated
-    const isAuthenticated = localStorage.getItem('wolver-authenticated')
-    if (isAuthenticated === 'true') {
-      onAuthenticated()
+    const isAuth = typeof window !== 'undefined' && localStorage.getItem('wolver-authenticated')
+    if (isAuth === 'true') {
+      handleAuth()
       return
     }
 
     let index = 0
     const interval = setInterval(() => {
-      if (index < fullQuestion.length) {
-        setDisplayedText(fullQuestion.slice(0, index + 1))
+      if (index < QUESTION.length) {
+        setDisplayedText(QUESTION.slice(0, index + 1))
         index++
       } else {
         clearInterval(interval)
@@ -34,14 +37,14 @@ export default function Gatekeeper({ onAuthenticated }: GatekeeperProps) {
     }, 30)
 
     return () => clearInterval(interval)
-  }, [onAuthenticated])
+  }, [handleAuth])
 
   const handleChoice = (choice: 'A' | 'B' | 'C') => {
     if (choice === 'B') {
       setPhase('accepted')
       localStorage.setItem('wolver-authenticated', 'true')
       setTimeout(() => {
-        onAuthenticated()
+        handleAuth()
       }, 1500)
     } else {
       setPhase('rejected')
@@ -80,7 +83,6 @@ export default function Gatekeeper({ onAuthenticated }: GatekeeperProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg">
       <div className="max-w-3xl w-full px-6 md:px-12">
-        {/* Terminal header */}
         <div className="border border-border rounded-t-md">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-surface">
             <div className="w-3 h-3 rounded-full bg-red-500/60" />
@@ -92,7 +94,6 @@ export default function Gatekeeper({ onAuthenticated }: GatekeeperProps) {
           </div>
         </div>
 
-        {/* Terminal body */}
         <div className="border border-t-0 border-border rounded-b-md bg-surface/50 p-6 md:p-10">
           <div className="mb-2 text-xs text-text-tertiary font-mono uppercase tracking-widest">
             [PROTOCOL INITIATED]
