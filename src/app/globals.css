@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg-color: #030303;
+  --surface-color: #0a0a0a;
+  --border-color: #1a1a1a;
+  --border-hover: #333333;
+  --text-primary: #f4f4f4;
+  --text-secondary: #888888;
+  --text-tertiary: #555555;
+  --accent-gold-start: #bf953f;
+  --accent-gold-mid: #fcf6ba;
+  --accent-gold-end: #b38728;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Gold gradient text */
+.gold-gradient-text {
+  background: linear-gradient(
+    135deg,
+    var(--accent-gold-start) 0%,
+    var(--accent-gold-mid) 50%,
+    var(--accent-gold-end) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: pulse-glow 4s infinite alternate;
+}
+
+@keyframes pulse-glow {
+  0% {
+    filter: drop-shadow(0px 0px 15px rgba(252, 246, 186, 0.1));
+  }
+  100% {
+    filter: drop-shadow(0px 0px 35px rgba(252, 246, 186, 0.4));
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* Terminal cursor */
+.terminal-cursor::after {
+  content: '_';
+  animation: terminalBlink 1s step-end infinite;
+}
+
+@keyframes terminalBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Card accent colors */
+.card-lower {
+  --card-accent: #b08d57;
+  --card-glow: rgba(176, 141, 87, 0.15);
+}
+
+.card-upper {
+  --card-accent: #00e5ff;
+  --card-glow: rgba(0, 229, 255, 0.15);
+}
+
+.card-recovery {
+  --card-accent: #d4af37;
+  --card-glow: rgba(212, 175, 55, 0.15);
+}
+
+.card-rest {
+  --card-accent: #71797e;
+  --card-glow: rgba(113, 121, 126, 0.15);
+}
+
+/* Exercise checkbox */
+.exercise-checkbox {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-hover);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.exercise-checkbox:checked {
+  background: linear-gradient(
+    135deg,
+    var(--accent-gold-start),
+    var(--accent-gold-mid),
+    var(--accent-gold-end)
+  );
+  border-color: var(--accent-gold-start);
+}
+
+.exercise-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 5px;
+  height: 9px;
+  border: solid #030303;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.exercise-checkbox:hover {
+  border-color: var(--accent-gold-start);
+  box-shadow: 0 0 10px rgba(191, 149, 63, 0.2);
+}
+
+/* Muscle SVG glow */
+.muscle-active {
+  transition: all 0.5s ease;
+}
+
+/* XP popup animation */
+.xp-popup {
+  animation: xpFloat 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes xpFloat {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.8);
+  }
+}
+
+/* Level progress bar */
+.level-progress-bar {
+  background: linear-gradient(
+    90deg,
+    var(--accent-gold-start),
+    var(--accent-gold-mid),
+    var(--accent-gold-end)
+  );
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
