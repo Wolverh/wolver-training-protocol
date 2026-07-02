@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { WorkoutDay, Exercise } from '@/lib/supabase'
 import ExerciseItem from './ExerciseItem'
-import { ChevronDown, CheckCircle2 } from 'lucide-react'
+import { ChevronDown, CheckCircle2, Undo2 } from 'lucide-react'
 
 interface DayCardProps {
   day: WorkoutDay
@@ -12,9 +12,10 @@ interface DayCardProps {
   isDayFinalized: boolean
   onToggleExercise: (exerciseId: string, completed: boolean) => void
   onCommitDay: (dayId: string) => void
+  onUncommitDay: (dayId: string) => void
 }
 
-export default function DayCard({ day, exercises, completedExercises, isDayFinalized, onToggleExercise, onCommitDay }: DayCardProps) {
+export default function DayCard({ day, exercises, completedExercises, isDayFinalized, onToggleExercise, onCommitDay, onUncommitDay }: DayCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const completedCount = exercises.filter(e => completedExercises.has(e.id)).length
@@ -133,9 +134,21 @@ export default function DayCard({ day, exercises, completedExercises, isDayFinal
           {/* Day completion commit indicator & button */}
           <div className="px-5 md:px-8 py-6 border-t border-border bg-surface/20 flex flex-col items-center justify-center gap-4">
             {isDayFinalized ? (
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-gold-start" />
-                <span className="text-base font-bold gold-gradient-text">Day Completed & Logged</span>
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-gold-start" />
+                  <span className="text-base font-bold gold-gradient-text">Day Completed & Logged</span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onUncommitDay(day.id)
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-md border border-red-500/30 text-red-400 text-xs font-mono uppercase tracking-wider hover:bg-red-500/10 hover:border-red-500/50 transition-all duration-300"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  Undo Day Completion
+                </button>
               </div>
             ) : (
               <button

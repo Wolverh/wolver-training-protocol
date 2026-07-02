@@ -179,6 +179,43 @@ export default function Home() {
     setTimeout(() => setAnimateXP(false), 500)
   }
 
+  const handleUncommitDay = async (dayId: string) => {
+    if (!user || !completedDays.has(dayId)) return
+
+    await supabase
+      .from('day_completions')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('workout_day_id', dayId)
+      .eq('completed_date', selectedDate)
+
+    const newTotalXP = Math.max(0, (user.total_xp || 0) - DAY_COMPLETION_BONUS)
+    await supabase.from('users').update({ total_xp: newTotalXP, updated_at: new Date().toISOString() }).eq('id', user.id)
+    setUser({ ...user, total_xp: newTotalXP })
+    setTodayXP(prev => Math.max(0, prev - DAY_COMPLETION_BONUS))
+
+    setCompletedDays(prev => {
+      const next = new Set(prev)
+      next.delete(dayId)
+      return next
+    })
+
+    // Check if any other day_completions exist for this date
+    const { data: remaining } = await supabase
+      .from('day_completions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('completed_date', selectedDate)
+
+    if (!remaining || remaining.length === 0) {
+      setGlobalCompletedDates(prev => {
+        const next = new Set(prev)
+        next.delete(selectedDate)
+        return next
+      })
+    }
+  }
+
   const activeMuscles = useMemo(() => {
     const completedMuscleGroups = Object.values(exercises)
       .flat()
@@ -232,6 +269,7 @@ export default function Home() {
                     isDayFinalized={completedDays.has(day.id)}
                     onToggleExercise={handleToggleExercise}
                     onCommitDay={handleCommitDay}
+                    onUncommitDay={handleUncommitDay}
                   />
                 ))}
               </div>
