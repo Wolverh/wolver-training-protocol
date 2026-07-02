@@ -27,16 +27,26 @@ export default function HypertrophyMap({ activeMuscles }: HypertrophyMapProps) {
     const isActive = volume > 0
     const color = findMuscleColor(id)
     
-    const opacity = isActive ? Math.min(0.6 + (volume * 0.15), 1.0) : 0.4
-    const glowRadius = isActive ? Math.min(4 + (volume * 2), 12) : 0
+    // Dramatic scaling: inactive is nearly invisible. Each exercise hit makes a visible jump.
+    // volume 0 = 0.15 (barely visible dark outline)
+    // volume 1 = 0.5 (clearly lit)
+    // volume 2 = 0.7 (bright)
+    // volume 3 = 0.9 (very bright)
+    // volume 4+ = 1.0 (maximum intensity, blazing)
+    const opacity = isActive ? Math.min(0.35 + (volume * 0.22), 1.0) : 0.12
+    // Glow radius scales aggressively
+    const glowRadius = isActive ? Math.min(6 + (volume * 4), 20) : 0
+    // Glow opacity also increases with volume
+    const glowAlpha = isActive ? Math.min(0.4 + (volume * 0.15), 0.9) : 0
+    const glowHex = Math.round(glowAlpha * 255).toString(16).padStart(2, '0')
     
     return {
-      fill: isActive ? color : '#1a1a1a',
+      fill: isActive ? color : '#0d0d0d',
       opacity: opacity,
-      filter: isActive ? `drop-shadow(0 0 ${glowRadius}px ${color}80)` : 'none',
-      transition: 'all 0.5s ease',
-      stroke: isActive ? color : '#222',
-      strokeWidth: 0.5,
+      filter: isActive ? `drop-shadow(0 0 ${glowRadius}px ${color}${glowHex})` : 'none',
+      transition: 'all 0.4s ease',
+      stroke: isActive ? color : '#181818',
+      strokeWidth: isActive ? 0.8 : 0.3,
     }
   }
 
