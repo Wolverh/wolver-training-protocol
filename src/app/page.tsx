@@ -3,12 +3,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { WorkoutDay, Exercise, ExerciseCompletion, UserProfile } from '@/lib/supabase'
-import { calculateDayBonus } from '@/lib/xp'
-import { getActiveMuscles } from '@/lib/muscles'
+import { getActiveMusclesVolume } from '@/lib/muscles'
 import Gatekeeper from '@/components/Gatekeeper'
 import XPDisplay from '@/components/XPDisplay'
 import DayCard from '@/components/DayCard'
 import HypertrophyMap from '@/components/HypertrophyMap'
+import Calendar from '@/components/Calendar'
+import AnalyticsDashboard from '@/components/AnalyticsDashboard'
+import { format } from 'date-fns'
+import { toZonedTime } from 'date-fns-tz'
+
+const CAIRO_TZ = 'Africa/Cairo'
+const DAY_COMPLETION_BONUS = 50
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -16,15 +22,25 @@ export default function Home() {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>([])
   const [exercises, setExercises] = useState<Record<string, Exercise[]>>({})
+  
+  // Date State
+  const [selectedDate, setSelectedDate] = useState<string>(
+    format(toZonedTime(new Date(), CAIRO_TZ), 'yyyy-MM-dd')
+  )
+  
+  // Progress State for Selected Date
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set())
-  const [todayXP, setTodayXP] = useState(0)
-  const [animateXP, setAnimateXP] = useState(false)
   const [completedDays, setCompletedDays] = useState<Set<string>>(new Set())
-
-  const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const [todayXP, setTodayXP] = useState(0)
+  
+  // Global Progress State
+  const [globalCompletedDates, setGlobalCompletedDates] = useState<Set<string>>(new Set())
+  
+  const [animateXP, setAnimateXP] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
+      setLoading(true)
       const { data: userData } = await supabase
         .from('users')
         .select('*')
@@ -33,18 +49,10 @@ export default function Home() {
 
       if (userData) setUser(userData)
 
-      const { data: daysData } = await supabase
-        .from('workout_days')
-        .select('*')
-        .order('day_number')
-
+      const { data: daysData } = await supabase.from('workout_days').select('*').order('day_number')
       if (daysData) setWorkoutDays(daysData)
 
-      const { data: exercisesData } = await supabase
-        .from('exercises')
-        .select('*')
-        .order('sort_order')
-
+      const { data: exercisesData } = await supabase.from('exercises').select('*').order('sort_order')
       if (exercisesData) {
         const grouped: Record<string, Exercise[]> = {}
         exercisesData.forEach((ex: Exercise) => {
@@ -55,29 +63,39 @@ export default function Home() {
       }
 
       if (userData) {
+        // Fetch specific date exercise completions
         const { data: completionsData } = await supabase
           .from('exercise_completions')
           .select('*')
           .eq('user_id', userData.id)
-          .eq('completed_date', today)
+          .eq('completed_date', selectedDate)
 
         if (completionsData) {
           const completedIds = new Set(completionsData.map((c: ExerciseCompletion) => c.exercise_id))
           setCompletedExercises(completedIds)
           const xp = completionsData.reduce((sum: number, c: ExerciseCompletion) => sum + c.xp_earned, 0)
           setTodayXP(xp)
+        } else {
+          setCompletedExercises(new Set())
+          setTodayXP(0)
         }
 
-        const { data: dayCompletionsData } = await supabase
+        // Fetch ALL day completions for calendar dots
+        const { data: allDayCompletions } = await supabase
           .from('day_completions')
           .select('*')
           .eq('user_id', userData.id)
-          .eq('completed_date', today)
 
-        if (dayCompletionsData) {
-          const completedDayIds = new Set(dayCompletionsData.map((dc: { workout_day_id: string }) => dc.workout_day_id))
+        if (allDayCompletions) {
+          const allDates = new Set(allDayCompletions.map((dc: any) => dc.completed_date))
+          setGlobalCompletedDates(allDates)
+          
+          // Filter for selected date
+          const selectedDayCompletions = allDayCompletions.filter((dc: any) => dc.completed_date === selectedDate)
+          const completedDayIds = new Set(selectedDayCompletions.map((dc: any) => dc.workout_day_id))
           setCompletedDays(completedDayIds)
-          const dayBonusXP = dayCompletionsData.reduce((sum: number, dc: { bonus_xp: number }) => sum + dc.bonus_xp, 0)
+          
+          const dayBonusXP = selectedDayCompletions.reduce((sum: number, dc: { bonus_xp: number }) => sum + dc.bonus_xp, 0)
           setTodayXP(prev => prev + dayBonusXP)
         }
       }
@@ -86,7 +104,7 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
-  }, [today])
+  }, [selectedDate])
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -111,7 +129,7 @@ export default function Home() {
       await supabase.from('exercise_completions').insert({
         user_id: user.id,
         exercise_id: exerciseId,
-        completed_date: today,
+        completed_date: selectedDate,
         xp_earned: exercise.xp_value,
       })
 
@@ -121,26 +139,6 @@ export default function Home() {
       setTodayXP(prev => prev + exercise.xp_value)
       setAnimateXP(true)
       setTimeout(() => setAnimateXP(false), 500)
-
-      const dayExercises = exercises[exercise.workout_day_id] || []
-      const allComplete = dayExercises.every(e => newCompleted.has(e.id))
-
-      if (allComplete && !completedDays.has(exercise.workout_day_id)) {
-        const bonus = calculateDayBonus(dayExercises.length)
-
-        await supabase.from('day_completions').insert({
-          user_id: user.id,
-          workout_day_id: exercise.workout_day_id,
-          completed_date: today,
-          bonus_xp: bonus,
-        })
-
-        const bonusTotalXP = newTotalXP + bonus
-        await supabase.from('users').update({ total_xp: bonusTotalXP, updated_at: new Date().toISOString() }).eq('id', user.id)
-        setUser({ ...user, total_xp: bonusTotalXP })
-        setTodayXP(prev => prev + bonus)
-        setCompletedDays(prev => new Set([...prev, exercise.workout_day_id]))
-      }
     } else {
       newCompleted.delete(exerciseId)
       setCompletedExercises(newCompleted)
@@ -150,35 +148,35 @@ export default function Home() {
         .delete()
         .eq('user_id', user.id)
         .eq('exercise_id', exerciseId)
-        .eq('completed_date', today)
+        .eq('completed_date', selectedDate)
 
       const newTotalXP = Math.max(0, (user.total_xp || 0) - exercise.xp_value)
       await supabase.from('users').update({ total_xp: newTotalXP, updated_at: new Date().toISOString() }).eq('id', user.id)
       setUser({ ...user, total_xp: newTotalXP })
       setTodayXP(prev => Math.max(0, prev - exercise.xp_value))
-
-      if (completedDays.has(exercise.workout_day_id)) {
-        const dayExercises = exercises[exercise.workout_day_id] || []
-        const bonus = calculateDayBonus(dayExercises.length)
-
-        await supabase
-          .from('day_completions')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('workout_day_id', exercise.workout_day_id)
-          .eq('completed_date', today)
-
-        const bonusTotalXP = Math.max(0, newTotalXP - bonus)
-        await supabase.from('users').update({ total_xp: bonusTotalXP, updated_at: new Date().toISOString() }).eq('id', user.id)
-        setUser({ ...user, total_xp: bonusTotalXP })
-        setTodayXP(prev => Math.max(0, prev - bonus))
-        setCompletedDays(prev => {
-          const next = new Set(prev)
-          next.delete(exercise.workout_day_id)
-          return next
-        })
-      }
     }
+  }
+
+  const handleCommitDay = async (dayId: string) => {
+    if (!user || completedDays.has(dayId)) return
+
+    await supabase.from('day_completions').insert({
+      user_id: user.id,
+      workout_day_id: dayId,
+      completed_date: selectedDate,
+      bonus_xp: DAY_COMPLETION_BONUS,
+    })
+
+    const newTotalXP = (user.total_xp || 0) + DAY_COMPLETION_BONUS
+    await supabase.from('users').update({ total_xp: newTotalXP, updated_at: new Date().toISOString() }).eq('id', user.id)
+    setUser({ ...user, total_xp: newTotalXP })
+    setTodayXP(prev => prev + DAY_COMPLETION_BONUS)
+    
+    setCompletedDays(prev => new Set([...prev, dayId]))
+    setGlobalCompletedDates(prev => new Set([...prev, selectedDate]))
+    
+    setAnimateXP(true)
+    setTimeout(() => setAnimateXP(false), 500)
   }
 
   const activeMuscles = useMemo(() => {
@@ -186,22 +184,11 @@ export default function Home() {
       .flat()
       .filter(e => completedExercises.has(e.id))
       .map(e => e.muscle_groups)
-    return getActiveMuscles(completedMuscleGroups)
+    return getActiveMusclesVolume(completedMuscleGroups)
   }, [exercises, completedExercises])
 
   if (!isAuthenticated) {
     return <Gatekeeper onAuthenticated={() => setIsAuthenticated(true)} />
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-gold-start border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-text-tertiary uppercase tracking-widest">Initializing Protocol</p>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -222,31 +209,47 @@ export default function Home() {
           animateXP={animateXP}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {workoutDays.map(day => (
-                <DayCard
-                  key={day.id}
-                  day={day}
-                  exercises={exercises[day.id] || []}
-                  completedExercises={completedExercises}
-                  onToggleExercise={handleToggleExercise}
-                />
-              ))}
-            </div>
-          </div>
+        <Calendar 
+          selectedDate={selectedDate} 
+          onDateSelect={setSelectedDate} 
+          completedDaysMap={globalCompletedDates} 
+        />
 
-          <div className="lg:col-span-1">
-            <div className="lg:sticky lg:top-8">
-              <HypertrophyMap activeMuscles={activeMuscles} />
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 border-2 border-gold-start border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {workoutDays.map(day => (
+                  <DayCard
+                    key={day.id}
+                    day={day}
+                    exercises={exercises[day.id] || []}
+                    completedExercises={completedExercises}
+                    isDayFinalized={completedDays.has(day.id)}
+                    onToggleExercise={handleToggleExercise}
+                    onCommitDay={handleCommitDay}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="lg:col-span-1">
+              <div className="lg:sticky lg:top-8">
+                <HypertrophyMap activeMuscles={activeMuscles} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {user && <AnalyticsDashboard userId={user.id} />}
 
         <footer className="text-center py-8 border-t border-border">
           <p className="text-xs text-text-tertiary uppercase tracking-widest">
-            Wolver Training Protocol v1.0
+            Wolver Training Protocol v2.0
           </p>
         </footer>
       </div>

@@ -6,7 +6,7 @@ interface GatekeeperProps {
   onAuthenticated: () => void
 }
 
-const QUESTION = 'You are trapped in an unbreakable, infinite time loop, armed only with a shattered glass shard. The only exit requires an infinitely shifting quantum code. What do you do?'
+const QUESTION = 'Wanna make sure that you are Mahmoud. Or a Mahmoud fan.\n\nThe Mahmoud Test\n\nMahmoud needs to pass a very big metal door. He has no key, and the lock is impossible to open. What does he do?'
 
 export default function Gatekeeper({ onAuthenticated }: GatekeeperProps) {
   const [phase, setPhase] = useState<'typing' | 'options' | 'rejected' | 'accepted'>('typing')
@@ -40,7 +40,7 @@ export default function Gatekeeper({ onAuthenticated }: GatekeeperProps) {
   }, [handleAuth])
 
   const handleChoice = (choice: 'A' | 'B' | 'C') => {
-    if (choice === 'B') {
+    if (choice === 'C') {
       setPhase('accepted')
       localStorage.setItem('wolver-authenticated', 'true')
       setTimeout(() => {
@@ -98,7 +98,7 @@ export default function Gatekeeper({ onAuthenticated }: GatekeeperProps) {
           <div className="mb-2 text-xs text-text-tertiary font-mono uppercase tracking-widest">
             [PROTOCOL INITIATED]
           </div>
-          <p className="font-mono text-sm md:text-base text-text-primary leading-relaxed mb-8">
+          <p className="font-mono text-sm md:text-base text-text-primary leading-relaxed mb-8 whitespace-pre-wrap">
             {displayedText}
             {phase === 'typing' && <span className="terminal-cursor" />}
           </p>
@@ -111,27 +111,27 @@ export default function Gatekeeper({ onAuthenticated }: GatekeeperProps) {
               >
                 <span className="text-text-tertiary font-mono text-xs mr-3 group-hover:text-gold-start transition-colors">[A]</span>
                 <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">
-                  Attempt to reverse-engineer the temporal algorithm using mathematical deduction.
+                  He gives up and walks away.
                 </span>
               </button>
 
               <button
                 onClick={() => handleChoice('B')}
-                className="w-full text-left px-5 py-4 border border-border rounded-md bg-bg/50 hover:border-gold-start/50 hover:bg-surface hover:shadow-[0_0_20px_rgba(191,149,63,0.1)] transition-all duration-300 group"
+                className="w-full text-left px-5 py-4 border border-border rounded-md bg-bg/50 hover:border-border-hover hover:bg-surface transition-all duration-300 group"
               >
                 <span className="text-text-tertiary font-mono text-xs mr-3 group-hover:text-gold-start transition-colors">[B]</span>
                 <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">
-                  Stab the glass shard directly into the chronal mechanism&apos;s core and break the goddamn fabric of the loop itself.
+                  He sits down and waits for help.
                 </span>
               </button>
 
               <button
                 onClick={() => handleChoice('C')}
-                className="w-full text-left px-5 py-4 border border-border rounded-md bg-bg/50 hover:border-border-hover hover:bg-surface transition-all duration-300 group"
+                className="w-full text-left px-5 py-4 border border-border rounded-md bg-bg/50 hover:border-gold-start/50 hover:bg-surface hover:shadow-[0_0_20px_rgba(191,149,63,0.1)] transition-all duration-300 group"
               >
                 <span className="text-text-tertiary font-mono text-xs mr-3 group-hover:text-gold-start transition-colors">[C]</span>
                 <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">
-                  Conserve energy and wait for external timeline intervention.
+                  He gets a big hammer and breaks the goddamn wall next to it.
                 </span>
               </button>
             </div>

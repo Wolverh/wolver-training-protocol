@@ -113,25 +113,31 @@ export const MUSCLE_MAP: Record<string, MuscleMapping> = {
   },
 }
 
-export function getActiveMuscles(completedExerciseMuscleGroups: string[][]): Set<string> {
-  const active = new Set<string>()
+export function getActiveMusclesVolume(completedExerciseMuscleGroups: string[][]): Map<string, number> {
+  const activeVolume = new Map<string, number>()
   completedExerciseMuscleGroups.forEach(groups => {
-    groups.forEach(group => active.add(group))
+    groups.forEach(group => {
+      activeVolume.set(group, (activeVolume.get(group) || 0) + 1)
+    })
   })
-  return active
+  return activeVolume
 }
 
-export function getActiveSvgIds(activeMuscles: Set<string>): { frontIds: Set<string>; backIds: Set<string> } {
-  const frontIds = new Set<string>()
-  const backIds = new Set<string>()
+export function getActiveSvgVolume(activeVolume: Map<string, number>): { frontVolume: Map<string, number>; backVolume: Map<string, number> } {
+  const frontVolume = new Map<string, number>()
+  const backVolume = new Map<string, number>()
 
-  activeMuscles.forEach(muscle => {
+  activeVolume.forEach((count, muscle) => {
     const mapping = MUSCLE_MAP[muscle]
     if (mapping) {
-      mapping.frontIds.forEach(id => frontIds.add(id))
-      mapping.backIds.forEach(id => backIds.add(id))
+      mapping.frontIds.forEach(id => {
+        frontVolume.set(id, (frontVolume.get(id) || 0) + count)
+      })
+      mapping.backIds.forEach(id => {
+        backVolume.set(id, (backVolume.get(id) || 0) + count)
+      })
     }
   })
 
-  return { frontIds, backIds }
+  return { frontVolume, backVolume }
 }

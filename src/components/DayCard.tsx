@@ -9,15 +9,16 @@ interface DayCardProps {
   day: WorkoutDay
   exercises: Exercise[]
   completedExercises: Set<string>
+  isDayFinalized: boolean
   onToggleExercise: (exerciseId: string, completed: boolean) => void
+  onCommitDay: (dayId: string) => void
 }
 
-export default function DayCard({ day, exercises, completedExercises, onToggleExercise }: DayCardProps) {
+export default function DayCard({ day, exercises, completedExercises, isDayFinalized, onToggleExercise, onCommitDay }: DayCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const completedCount = exercises.filter(e => completedExercises.has(e.id)).length
   const totalCount = exercises.length
-  const isFullyComplete = totalCount > 0 && completedCount === totalCount
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
 
   const cardClass = `card-${day.card_type}`
@@ -68,7 +69,7 @@ export default function DayCard({ day, exercises, completedExercises, onToggleEx
             <span className="text-xs text-text-tertiary uppercase tracking-widest">
               Day {day.day_number} / {day.day_name}
             </span>
-            {isFullyComplete && (
+            {isDayFinalized && (
               <CheckCircle2 className="w-4 h-4 text-gold-start" />
             )}
           </div>
@@ -94,7 +95,7 @@ export default function DayCard({ day, exercises, completedExercises, onToggleEx
                 className="h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${progressPercent}%`,
-                  background: isFullyComplete
+                  background: isDayFinalized
                     ? 'linear-gradient(90deg, var(--accent-gold-start), var(--accent-gold-mid), var(--accent-gold-end))'
                     : 'var(--card-accent, #555)',
                 }}
@@ -113,7 +114,7 @@ export default function DayCard({ day, exercises, completedExercises, onToggleEx
       {/* Exercise list */}
       <div
         className={`overflow-hidden transition-all duration-500 ${
-          isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+          isExpanded ? 'max-h-[1500px] opacity-100' : 'max-h-0 opacity-0'
         }`}
         style={{
           transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
@@ -129,15 +130,25 @@ export default function DayCard({ day, exercises, completedExercises, onToggleEx
             />
           ))}
 
-          {/* Day completion bonus indicator */}
-          {isFullyComplete && (
-            <div className="px-5 md:px-8 py-4 border-t border-border bg-surface/20">
+          {/* Day completion commit indicator & button */}
+          <div className="px-5 md:px-8 py-6 border-t border-border bg-surface/20 flex flex-col items-center justify-center gap-4">
+            {isDayFinalized ? (
               <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-gold-start" />
-                <span className="text-sm font-bold gold-gradient-text">Day Complete! +50 XP Bonus</span>
+                <CheckCircle2 className="w-5 h-5 text-gold-start" />
+                <span className="text-base font-bold gold-gradient-text">Day Completed & Logged</span>
               </div>
-            </div>
-          )}
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCommitDay(day.id)
+                }}
+                className="w-full max-w-[300px] py-3 px-6 rounded-md bg-gold-start/10 border border-gold-start/30 text-gold-mid font-display font-bold uppercase tracking-wider hover:bg-gold-start/20 hover:border-gold-start/50 transition-all duration-300 shadow-[0_0_15px_rgba(191,149,63,0.1)] hover:shadow-[0_0_20px_rgba(191,149,63,0.3)]"
+              >
+                We&apos;re done / I checked the day
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </article>
